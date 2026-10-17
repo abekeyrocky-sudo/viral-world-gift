@@ -47,8 +47,8 @@ export default function QuizCard({
       {/* Top Spacer allowing background character to shine through */}
       <div className="screen-bg-top-spacer" />
 
-      {/* Floating White Card on top of the background */}
-      <div className="quiz-floating-card">
+      {/* Floating White Card on top of the background with step entrance animation */}
+      <div key={currentStep} className="quiz-floating-card">
         {/* Progress Bar & Step Tracker */}
         <div className="screen-progress-wrap">
           <div className="progress-bar-track">

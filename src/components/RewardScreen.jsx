@@ -1,15 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { QUIZ_CONFIG, QUIZ_QUESTIONS, REWARD_BG } from '../data/quizData';
+import { formatDetailedBengaliCountdown } from '../utils/formatters';
 import {
   GiftVectorIcon,
   ClockVectorIcon,
   RefreshVectorIcon,
-  TelegramVectorIcon
+  TelegramVectorIcon,
+  AlertCircleVectorIcon
 } from './Icons';
 
-export default function RewardScreen({ userAnswers, onRestart }) {
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
+export default function RewardScreen({ userAnswers, completedTime, onTwelveHoursExpired }) {
   const [showSummary, setShowSummary] = useState(false);
+  const [showClickWarning, setShowClickWarning] = useState(false);
+
+  const getRemainingMs = () => {
+    if (!completedTime) return TWELVE_HOURS_MS;
+    const elapsed = Date.now() - completedTime;
+    return Math.max(0, TWELVE_HOURS_MS - elapsed);
+  };
+
+  const [remainingMs, setRemainingMs] = useState(getRemainingMs);
 
   useEffect(() => {
     // Fire celebration particles
@@ -38,6 +51,30 @@ export default function RewardScreen({ userAnswers, onRestart }) {
     })();
   }, []);
 
+  // 12-hour real-time live countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const currentRemaining = getRemainingMs();
+      setRemainingMs(currentRemaining);
+      if (currentRemaining <= 0) {
+        clearInterval(timer);
+        if (onTwelveHoursExpired) {
+          onTwelveHoursExpired();
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [completedTime, onTwelveHoursExpired]);
+
+  const handleDisabledRestartClick = (e) => {
+    e.preventDefault();
+    setShowClickWarning(true);
+    setTimeout(() => {
+      setShowClickWarning(false);
+    }, 4000);
+  };
+
   return (
     <div
       className="phone-screen-body screen-with-bg"
@@ -55,8 +92,8 @@ export default function RewardScreen({ userAnswers, onRestart }) {
         <h2 className="reward-heading">টাস্ক সম্পন্ন করুন!</h2>
 
         <p className="reward-description">
-          নিচের টেলিগ্রাম বটে জয়েন করুন এবং <strong>{QUIZ_CONFIG.estimatedWaitTime} অপেক্ষা করুন</strong>। 
-          আপনি যোগ্য বিবেচিত হলে আপনার উপহার পেয়ে যাবেন!
+          নিচের টেলিগ্রাম বটে জয়েন করুন এবং <strong>১২ ঘণ্টা অপেক্ষা করুন</strong>। 
+          কাউন্টডাউন চলাকালীন আপনি যোগ্য বিবেচিত হলে আপনার উপহার পেয়ে যাবেন!
         </p>
 
         {/* Telegram CTA Button */}
@@ -71,13 +108,16 @@ export default function RewardScreen({ userAnswers, onRestart }) {
           <span>টেলিগ্রাম বটে জয়েন করুন</span>
         </a>
 
-        {/* Wait Time Info */}
-        <div className="reward-wait-time">
-          <ClockVectorIcon className="vector-clock-inline" />
-          <span>অপেক্ষার সময়: {QUIZ_CONFIG.estimatedWaitTime}</span>
+        {/* 12-Hour Live Countdown Timer */}
+        <div className="reward-wait-time reward-countdown-bar">
+          <ClockVectorIcon className="vector-clock-inline countdown-clock-icon" />
+          <span className="countdown-prefix">অপেক্ষার বাকি সময়:</span>
+          <span className="countdown-time-badge" id="twelve-hour-countdown">
+            {formatDetailedBengaliCountdown(remainingMs)}
+          </span>
         </div>
 
-        {/* Answers Review & Restart Section */}
+        {/* Answers Review & Inactive Restart Section */}
         <div className="reward-extra-actions">
           <button
             type="button"
@@ -98,14 +138,23 @@ export default function RewardScreen({ userAnswers, onRestart }) {
             </div>
           )}
 
+          {/* This button is disabled/inactive - clicking does NOT work or restart */}
           <button
             type="button"
-            className="btn-restart-action"
-            onClick={onRestart}
+            className="btn-restart-action btn-restart-disabled"
+            onClick={handleDisabledRestartClick}
+            aria-disabled="true"
           >
             <RefreshVectorIcon className="vector-refresh-inline" />
             <span>আবার কুইজ খেলুন</span>
           </button>
+
+          {showClickWarning && (
+            <div className="restart-warning-toast" role="alert">
+              <AlertCircleVectorIcon className="vector-alert-sm" />
+              <span>আপনি ইতিমধ্যে কুইজ সম্পন্ন করেছেন! ১২ ঘণ্টার কাউন্টডাউন শেষ হওয়া পর্যন্ত অপেক্ষা করুন।</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
